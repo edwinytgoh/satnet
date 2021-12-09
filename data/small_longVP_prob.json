@@ -1,0 +1,36 @@
+{
+  "subject": 882,
+  "user": "882_0",
+  "week": 10,
+  "year": 2018,
+  "duration": 1.0,
+  "duration_min": 1.0,
+  "track_id": "af11d2ea-21-19",
+  "setup_time": 60,
+  "teardown_time": 15,
+  "time_window_start": 555428,
+  "time_window_end": 647999,
+  "resource_vp_dict": {
+    "DSS-24": [
+      {
+        "TRX ON": 555428,
+        "TRX OFF": 633998,
+        "DURATION_HRS": 21.825
+      }
+    ],
+    "DSS-34": [
+      {
+        "TRX ON": 629575,
+        "TRX OFF": 647065,
+        "DURATION_HRS": 4.858333333333333
+      }
+    ],
+    "DSS-54": [
+      {
+        "TRX ON": 555428,
+        "TRX OFF": 615262,
+        "DURATION_HRS": 16.620555555555555
+      }
+    ]
+  }
+}

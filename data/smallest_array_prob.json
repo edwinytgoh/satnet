@@ -1,0 +1,39 @@
+{
+  "subject": 576,
+  "user": "576_0",
+  "week": 10,
+  "year": 2018,
+  "duration": 10.0,
+  "duration_min": 8.0,
+  "track_id": "07b3f07a-6-1",
+  "setup_time": 30,
+  "teardown_time": 15,
+  "time_window_start": 0,
+  "time_window_end": 105490,
+  "resource_vp_dict": {
+    "DSS-34_DSS-35": [
+      {
+        "TRX ON": 51751,
+        "TRX OFF": 78899
+      }
+    ],
+    "DSS-34_DSS-36": [
+      {
+        "TRX ON": 51752,
+        "TRX OFF": 105490
+      }
+    ],
+    "DSS-35_DSS-36": [
+      {
+        "TRX ON": 51752,
+        "TRX OFF": 78899
+      }
+    ],
+    "DSS-43": [
+      {
+        "TRX ON": 51520,
+        "TRX OFF": 75599
+      }
+    ]
+  }
+}
