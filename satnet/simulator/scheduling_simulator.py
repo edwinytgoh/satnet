@@ -166,34 +166,12 @@ class SchedulingSimulator:
         return update_week_array_from_json
 
     def load_maintenance_from_csv(self):
-        self.maintenance_df = pd.read_csv(
-            self.config.get("maintenance_file", satnet.maintenance[2018]),
-            dtype={
-                "week": np.int32,
-                "year": np.int32,
-                "starttime": np.int32,
-                "endtime": np.int32,
-                "antenna": str,
-            },
-        )
-        # filter out maintenance periods that don't overlap with the week
-        self.maintenance_df = self.maintenance_df[
-            (self.start_date <= self.maintenance_df["endtime"])
-            & (self.end_date >= self.maintenance_df["starttime"])
-        ]
-        self.maintenance_df["starttime"].clip(
-            lower=self.start_date, upper=self.end_date, inplace=True
-        )
-        self.maintenance_df["endtime"].clip(
-            lower=self.start_date, upper=self.end_date, inplace=True
-        )
-        # normalize maintenance times to start of week
-        self.maintenance_df["starttime"] -= self.start_date
-        self.maintenance_df["endtime"] -= self.start_date
+        maintenance_file = self.config.get("maintenance_file", satnet.maintenance[2018])
+        start_date = self.start_date
+        end_date = self.end_date
+        maintenance_df = read_maintenance_csv(maintenance_file, start_date, end_date)
 
-        duration = self.maintenance_df["endtime"] - self.maintenance_df["starttime"]
-        self.maintenance_df = self.maintenance_df[duration > 0].copy()
-
+        self.maintenance_df = maintenance_df
         self.mnt_list = [None] * self.maintenance_df.shape[0]
         for i in range(0, self.maintenance_df.shape[0]):
             s = self.maintenance_df.iloc[i]["starttime"]
@@ -1753,3 +1731,29 @@ class SchedulingSimulator:
                 num_multi += 1
         num_split = sum([n > 1 for n in tid_counts.values()])
         return num_multi, num_split
+
+
+def read_maintenance_csv(maintenance_file, start_date, end_date):
+    maintenance_df = pd.read_csv(
+        maintenance_file,
+        dtype={
+            "week": np.int32,
+            "year": np.int32,
+            "starttime": np.int32,
+            "endtime": np.int32,
+            "antenna": str,
+        },
+    )
+    # filter out maintenance periods that don't overlap with the week
+    maintenance_df = maintenance_df[
+        (start_date <= maintenance_df["endtime"])
+        & (end_date >= maintenance_df["starttime"])
+    ]
+    maintenance_df["starttime"].clip(lower=start_date, upper=end_date, inplace=True)
+    maintenance_df["endtime"].clip(lower=start_date, upper=end_date, inplace=True)
+    # normalize maintenance times to start of week
+    maintenance_df["starttime"] -= start_date
+    maintenance_df["endtime"] -= start_date
+    duration = maintenance_df["endtime"] - maintenance_df["starttime"]
+    maintenance_df = maintenance_df[duration > 0].copy()
+    return maintenance_df

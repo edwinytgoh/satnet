@@ -10,4 +10,5 @@ from .scheduling_simulator import (
     VP_SELECT_SHORTEST,
     VP_SELECT_RANDOM,
     SchedulingSimulator,
+    read_maintenance_csv,
 )
