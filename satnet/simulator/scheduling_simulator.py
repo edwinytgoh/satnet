@@ -34,6 +34,7 @@ from satnet.utils import (
     print_date,
 )
 
+# Column indices - we will use this later to select request attributes
 SUBJECT = json_keys.index("subject")
 TRACK_ID = json_keys.index("track_id")
 MIN_DURATION = json_keys.index("duration_min")
@@ -256,10 +257,7 @@ class SchedulingSimulator:
             elif already_split:
                 d_req_alloc = request[DURATION] - self.durations[index]
                 d_to_min = request[MIN_DURATION] - d_req_alloc
-                if 0 < d_to_min - 14400 < 14400:
-                    min_duration = d_to_min
-                else:
-                    min_duration = 14400
+                min_duration = max(14400, d_to_min)
             #  splittable + haven't placed any tracks + but only has one VP left:
             else:
                 min_duration = 14400  # 4 * 3600
@@ -1379,14 +1377,10 @@ class SchedulingSimulator:
         vp_heuristic = action.get("vp_heuristic", VP_SELECT_LONGEST)
 
         self.status = set()
-        find_valid_vps = False  # use this later - in the call to self.allocate
-        # track_ids_idx, resource, trx_on, trx_off = self.parse_action(action)
-        try:
             track_idx_in_week_array = self.track_idx_map[track_id]
             chosen_req = self.week_array[track_idx_in_week_array]
             vp_dict = self.vp_list[track_idx_in_week_array]
-        except:
-            pass
+
         # Filter out invalid or already-satisfied reqs
         # if track_ids_idx >= self.num_requests:
         #     secs_allocated = trx_on = trx_off = 0
@@ -1421,16 +1415,11 @@ class SchedulingSimulator:
             # manually copy resource_vp_dict to address in-place modification issue
             # chosen_req['resource_vp_dict'] = {ant:copy.deepcopy(vps) for ant, vps in chosen_req['resource_vp_dict'].items()}
 
+            find_valid_vps = False  # use this later - in the call to self.allocate
             if resource is None:
                 resource, (trx_on, trx_off) = self.find_antenna_vp_with_heuristics(
                     chosen_req, ant_heuristic, vp_heuristic
                 )
-                # try:
-                #     assert self.find_antenna_vp_greedy(
-                #         chosen_req
-                #     ) == self.find_antenna_vp_with_heuristics(chosen_req, 1, 0)
-                # except AssertionError:
-                #     pass
 
             elif trx_on is None and trx_off is None:
                 trx_on, trx_off = self.find_vp_with_heuristic(
@@ -1517,65 +1506,80 @@ class SchedulingSimulator:
             position_in_track_ids ([type]): [description]
 
         Returns:
-            int: -1 if allocated time is less than duration_min, integer index of request otherwise
+            str or None: track_id if request has been satisfied, else None
         """
-        if request is None and self.status == REQ_OUT_OF_RANGE:
-            return None
-        elif REQ_ALREADY_SATISFIED in self.status:
-            return None
+        trx_on, trx_off = vp
+        new_track = None
 
+        d_track = trx_off - trx_on
+        # Handle cases with errors/issues
+        if request is None and self.status == REQ_OUT_OF_RANGE:
+            return new_track
+        elif REQ_ALREADY_SATISFIED in self.status:
+            return new_track
+        if resource == "" or d_track == 0:
+            self.check_enough_vps(request)
+            return new_track
+
+        # Increment track_id_hit_count
         track_id = request[TRACK_ID]
         index = self.track_idx_map[track_id]  # req position in JSON file
-        trx_on, trx_off = vp
         self.track_id_hit_count[track_id] += 1
 
-        setup, teardown, d_min_track, duration = self.get_req_durations(request)
-        enough_vps = self.check_enough_vps(request, d_min_track)
+        # Get duration-related values - will use these later
+        is_splittable = request[DURATION] >= 28800 and self.allow_splitting
+        four_hrs = 14400
+        d_req_min = request[MIN_DURATION] - self.tol
+        d_min_track = four_hrs - self.tol if is_splittable else d_req_min
 
-        new_track = None
-        if antenna_combination == "":
-            return None
-
-        starttime = trx_on - setup
-        endtime = trx_off + teardown
+        # Initial screen: check whether allocated track is valid and in antenna_dict
+        # only proceed if allocated track is valid
+        starttime = trx_on - request[SETUP_TIME]
+        endtime = trx_off + request[TEARDOWN_TIME]
         track_ant_valid = all(
             [
                 ((starttime, endtime), track_id) in self.antenna_dict[ant].track_tuples
-                for ant in antenna_combination.split("_")
+                for ant in resource.split("_")
             ]
         )
-        d_track = trx_off - trx_on
         track_duration_valid = d_track >= d_min_track and track_ant_valid
         if not track_duration_valid:
-            return None
+            self.check_enough_vps(request)
+            return new_track
+        # Else 1) add track to _tid_tracks_temp 2) update durations 3) check validity
         else:
-            #! PROBLEM: This adds split (but unsatisfied) tracks too...
             self._tid_tracks_temp[track_id].append(
-                (trx_on, trx_off, antenna_combination)
-            )
+                (trx_on, trx_off, resource)
+            )  #! PROBLEM: This adds split (but unsatisfied) tracks too...
+
+            # Update durations
             d_req_rem = self.durations[index]  # remaining request duration
-            self.durations[index] -= min(d_track, d_req_rem)
-            # we can use mission_remaining_duration as a way to tell the agent which mission a request belongs to in bin packing
-            # ? Wonder what happens if we don't impose this min() check? Do we get negative durations?
+            self.durations[index] -= min(d_track, d_req_rem)  # use min to ensure +ve
             self.mission_remaining_duration[request[SUBJECT]] -= min(d_track, d_req_rem)
 
-            # split track - check to see if total_satisfied_duration for this request > the REQUEST'S min_duration
-            # note: if splittable, min_duration = 4 != request[MIN_DURATION], so we use min_duration above and use MIN_DURATION here
             d_req = request[DURATION]
-            # this is the updated d_req_rem after subtracting latest track:
-            d_req_rem_after_this_track = self.durations[index]
+            d_req_rem_after_this_track = self.durations[
+                index
+            ]  # after subtracting d_track
             d_req_alloc = d_req - d_req_rem_after_this_track
 
-            is_splittable = request[DURATION] >= 28800 and self.allow_splitting
-            d_req_min = request[MIN_DURATION]
-            is_split = is_splittable and d_min_track <= d_track < d_req_min
+            # check validity based on whether request is splittable
+            is_split = is_splittable and four_hrs <= d_track <= d_req - four_hrs
+            # if not split, then request is satisfied if allocated duration (d_req_alloc) >= d_req_min
             if not is_split:
                 req_is_satisfied = d_req_alloc >= d_req_min  # simple
+            # if split, include additional check on previously allocated tracks
             else:
-                # only tracks w/ valid durations added to tid_tracks_temp
+                # only valid split tracks are added to tid_tracks_temp
                 split_tracks = self._tid_tracks_temp[track_id]
-                req_is_satisfied = d_req_alloc >= d_req_min and len(split_tracks) > 1
+                req_is_satisfied = d_req_alloc >= d_req_min and len(split_tracks) >= 1
 
+                # check that d_req_alloc really takes into account all split tracks.
+                # can comment out for performance
+                d_sum = sum(t[1] - t[0] for t in self._tid_tracks_temp[track_id])
+
+            # split track - check to see if total_satisfied_duration for this request > the REQUEST'S min_duration
+            enough_vps = self.check_enough_vps(request)
             split_but_not_satisfied = is_split and not req_is_satisfied
             unsatisfiable_split = split_but_not_satisfied and (
                 d_req_rem_after_this_track < d_min_track or not enough_vps
@@ -1592,7 +1596,9 @@ class SchedulingSimulator:
                 self.unsatisfied_tracks.remove(track_id)
                 new_track = track_id
             elif not req_is_satisfied and not is_split:
-                pass
+                del self._tid_tracks_temp[track_id][-1]
+                self.durations[index] += d_track
+                self.mission_remaining_duration[request[SUBJECT]] += d_track
             # if satisfied duration is less than minimum, but remaining duration is already less than
             # min_duration, this request can never be satisfied, so we add it to reqs_without_vps
             # note: vps might be long enough, but we can't use them anymore
