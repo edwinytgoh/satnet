@@ -49,7 +49,7 @@ def build_week_array_from_list(prob_list: List[Dict[str, Any]]) -> np.array:
     Returns:
         np.array: Week array conforming to deep_rl.envs.SUB_COLS, with vp_dict as the last column
     """
-    prob_arr = np.empty((len(prob_list), 13), dtype="O")
+    prob_arr = np.empty((len(prob_list), len(json_keys) + 3), dtype="O")
 
     week = set(r["week"] for r in prob_list)
     year = set(r["year"] for r in prob_list)
