@@ -45,6 +45,9 @@ class SimpleEnv(gym.Env):
 
     def __init__(self, env_config={}):
         self.sim = SchedulingSimulator(env_config)
+
+        self.max_steps = env_config.get("absolute_max_steps", 1000)
+
         if self.sim.shuffle_requests:
             self.shuffle_track_ids()
         else:
@@ -141,7 +144,11 @@ class SimpleEnv(gym.Env):
         # check whether episode is done
         all_reqs_satisfied = self.sim.num_reqs_satisfied == self.sim.num_requests
         no_more_valid_actions = np.sum(obs["action_mask"]) == 0
-        done = all_reqs_satisfied or no_more_valid_actions
+        done = (
+            all_reqs_satisfied
+            or no_more_valid_actions
+            or self.sim.steps_taken > self.max_steps
+        )
 
         info = self.get_info(track_id, secs_allocated, resource, trx_on, trx_off)
 
@@ -215,6 +222,9 @@ class SimpleEnv(gym.Env):
                 or tid in self.sim.incomplete_split_reqs
             ):
                 self.action_mask[n] = 0
+            elif not self.sim.check_enough_vps(self.sim.week_array[self.index[n]]):
+                self.action_mask[n] = 0
+
         self.action_mask[self.sim.num_requests :] = 0
 
     def reset(self):

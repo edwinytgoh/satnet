@@ -46,7 +46,7 @@ if __name__ == "__main__":
         log_to_driver=True,
         logging_level=logging.WARNING,
     )
-    prob_handler = ProbHandler([satnet.problems[2018]])
+    prob_handler = ProbHandler(satnet.problems[2018])
     ph_ref = ray.put(prob_handler)
 
     register_env(
@@ -59,16 +59,15 @@ if __name__ == "__main__":
     env_config = {
         # TODO: add maintenance_file = satnet.maintenance[2018]
         "prob_handler": ph_ref,
-        "shuffle_requests": True,
+        "shuffle_requests": False,
         "absolute_max_steps": 15000,
         "allow_splitting": True,
         "year": 2018,
-        "week": 10,
-        "shuffle_antennas_on_reset": False,
+        "week": 30,
         "tol_mins": 0.15,
     }
     env_config_eval = copy.deepcopy(env_config)
-    env_config_eval["week"] = 44
+    env_config_eval["week"] = 30
 
     config = {
         "env": "simple_env",
@@ -145,7 +144,7 @@ if __name__ == "__main__":
 
     results = tune.run(
         "PPO",
-        name="W10_Splitting_noShuffle",
+        name="W30_satnet_noShuffle",
         stop=stopper,
         config=config,
         checkpoint_freq=10,

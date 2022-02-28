@@ -8,7 +8,7 @@ from ray.rllib.models.tf import TFModelV2
 from ray.rllib.models.tf.misc import normc_initializer
 from ray.rllib.utils.framework import get_activation_fn  # old ray
 
-from satnet.models import plot_model
+from satnet.models.utils import plot_model
 
 
 class SimpleModel(TFModelV2):

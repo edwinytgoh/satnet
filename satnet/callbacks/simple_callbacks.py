@@ -2,7 +2,6 @@ from collections import defaultdict
 from typing import DefaultDict, Dict
 
 import numpy as np
-from deep_rl.envs import DURATION
 from ray.rllib.agents.callbacks import DefaultCallbacks
 from ray.rllib.env import BaseEnv
 from ray.rllib.evaluation import MultiAgentEpisode, RolloutWorker
@@ -80,7 +79,10 @@ class SimpleCallbacks(DefaultCallbacks):
         episode.hist_data["req_num_vps"] = episode.user_data["req_num_vps"]
         episode.hist_data["req_remaining_hrs"] = episode.user_data["req_remaining_hrs"]
         episode.hist_data["num_invalid"] = episode.user_data["num_invalid"]
-        episode.hist_data["U_i"] = episode.last_info_for()["U_i"]
+        u_i = episode.last_info_for()["U_i"]
+        if isinstance(u_i, np.ndarray):
+            u_i = u_i.tolist()
+        episode.hist_data["U_i"] = u_i
         episode.hist_data["track_id_hit_count"] = list(
             flatten(
                 [

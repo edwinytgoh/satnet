@@ -32,8 +32,10 @@ if __name__ == "__main__":
         "env": "simple_env",
         "env_config": {
             "prob_handler": ph_ref,
+            "allow_splitting": True,
             "maintenance_file": os.path.join(repo_root, "data", "maintenance.csv"),
-            "shuffle_requests": True,
+            "shuffle_requests": False,
+            "week": 30
         },
         "callbacks": SimpleCallbacks,
         "model": {
@@ -43,7 +45,7 @@ if __name__ == "__main__":
         "num_gpus": 0,
         "framework": "tf",
         "sgd_minibatch_size": 8,
-        "train_batch_size": 128,
+        "train_batch_size": 1024,
     }
 
     stop = {
