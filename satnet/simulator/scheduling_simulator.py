@@ -1377,9 +1377,9 @@ class SchedulingSimulator:
         vp_heuristic = action.get("vp_heuristic", VP_SELECT_LONGEST)
 
         self.status = set()
-            track_idx_in_week_array = self.track_idx_map[track_id]
-            chosen_req = self.week_array[track_idx_in_week_array]
-            vp_dict = self.vp_list[track_idx_in_week_array]
+        track_idx_in_week_array = self.track_idx_map[track_id]
+        chosen_req = self.week_array[track_idx_in_week_array]
+        vp_dict = self.vp_list[track_idx_in_week_array]
 
         # Filter out invalid or already-satisfied reqs
         # if track_ids_idx >= self.num_requests:
@@ -1489,7 +1489,7 @@ class SchedulingSimulator:
 
         return track_list
 
-    def update_satisfied_reqs(self, request, vp, antenna_combination) -> str:
+    def update_satisfied_reqs(self, request, vp, resource) -> str:
         """Update environment's instance variables to include changes from latest allocated track.
         The following variables are updated:
             - env.week_df[i, 'duration']
@@ -1502,7 +1502,7 @@ class SchedulingSimulator:
         Args:
             request ([type]): [description]
             vp ([type]): [description]
-            antenna_combination ([type]): [description]
+            resource ([type]): [description]
             position_in_track_ids ([type]): [description]
 
         Returns:
