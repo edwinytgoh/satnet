@@ -71,7 +71,7 @@ setup(
     ],
     keywords="deeprl, ray, rllib, reinforcement learning, scheduling, development, aerospace, satellite, operations, research",
     packages=find_packages(),  # Required
-    python_requires=">=3.8, <4",
+    python_requires=">=3.8, <3.9",
     install_requires=[
         "ray[rllib]==1.2.0",
         "aiohttp<3.8.0",  # aiohttp 3.8.0 is not compatible with ray[rllib]==1.2.0
